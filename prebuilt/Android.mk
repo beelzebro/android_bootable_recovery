@@ -370,7 +370,11 @@ ifeq ($(TARGET_USERIMAGES_USE_F2FS), true)
     RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/fsck.f2fs
 endif
 ifneq ($(wildcard system/core/reboot/Android.*),)
-    RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/reboot
+    ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 29; echo $$?),0)
+        RELINK_SOURCE_FILES += $(TARGET_RECOVERY_ROOT_OUT)/sbin/reboot
+    else
+        RELINK_SOURCE_FILES += $(TARGET_OUT_EXECUTABLES)/reboot
+    endif
 endif
 ifneq ($(TW_DISABLE_TTF), true)
     RELINK_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libft2.so
@@ -493,7 +497,7 @@ LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
 LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
 LOCAL_POST_INSTALL_CMD += $(RELINK) $(TARGET_RECOVERY_ROOT_OUT)/sbin $(RELINK_SOURCE_FILES) && \
     mv $(TOYBOX_LINKS) $(TARGET_RECOVERY_ROOT_OUT)/sbin/
-LOCAL_REQUIRED_MODULES := linker adbd libdl_android toybox
+LOCAL_REQUIRED_MODULES := linker adbd libdl_android toybox libtar
 include $(BUILD_PHONY_PACKAGE)
 
 #relink init
@@ -507,7 +511,7 @@ LOCAL_POST_INSTALL_CMD += $(RELINK) $(TARGET_RECOVERY_ROOT_OUT)/ $(RELINK_INIT) 
     mv $(TARGET_RECOVERY_ROOT_OUT)/system/bin/ueventd $(TARGET_RECOVERY_ROOT_OUT)/sbin/ && \
     ln -sf /init $(TARGET_RECOVERY_ROOT_OUT)/sbin/init && \
     ln -sf /init $(TARGET_RECOVERY_ROOT_OUT)/system/bin/init
-LOCAL_REQUIRED_MODULES := init_second_stage.recovery
+LOCAL_REQUIRED_MODULES := init_second_stage.recovery reboot.recovery
 include $(BUILD_PHONY_PACKAGE)
 
 #mke2fs.conf
@@ -663,9 +667,9 @@ ifeq ($(TW_INCLUDE_CRYPTO), true)
     endif
 endif
 
-ifeq ($(TW_INCLUDE_REPACKTOOLS), true)
+ifneq (,$(filter $(TW_INCLUDE_REPACKTOOLS) $(TW_INCLUDE_RESETPROP) $(TW_INCLUDE_LIBRESETPROP), true))
     ifeq ($(wildcard external/magisk-prebuilt/Android.mk),)
-        $(warning Magisk repacking tools not found!)
+        $(warning Magisk prebuilt tools not found!)
         $(warning Please place https://github.com/TeamWin/external_magisk-prebuilt)
         $(warning into external/magisk-prebuilt)
         $(error magiskboot prebuilts not present; exiting)

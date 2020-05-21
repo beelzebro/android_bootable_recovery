@@ -142,7 +142,7 @@ else
     LOCAL_SHARED_LIBRARIES += libcrypto
 endif
 
-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 24; echo $$?),0)
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 23; echo $$?),0)
     LOCAL_SHARED_LIBRARIES += libbase
 endif
 
@@ -207,6 +207,11 @@ endif
 LOCAL_CFLAGS += -DTW_GIT_REVISION='"$(tw_git_revision)"'
 
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28; echo $$?),0)
+ifeq ($(TW_FORCE_USE_BUSYBOX), true)
+    TW_USE_TOOLBOX := false
+else
+    TW_USE_TOOLBOX := true
+endif
 ifeq ($(TW_EXCLUDE_MTP),)
     LOCAL_SHARED_LIBRARIES += libtwrpmtp-ffs
 endif
@@ -325,6 +330,9 @@ ifeq ($(TW_INCLUDE_CRYPTO), true)
     endif
     ifneq ($(TW_CRYPTO_USE_SYSTEM_VOLD),)
     ifneq ($(TW_CRYPTO_USE_SYSTEM_VOLD),false)
+		ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26; echo $$?),0)
+			TW_INCLUDE_LIBRESETPROP := true
+		endif
         LOCAL_CFLAGS += -DTW_CRYPTO_USE_SYSTEM_VOLD
         LOCAL_STATIC_LIBRARIES += libvolddecrypt
     endif
@@ -390,6 +398,20 @@ endif
 ifneq ($(TW_CLOCK_OFFSET),)
 	LOCAL_CFLAGS += -DTW_CLOCK_OFFSET=$(TW_CLOCK_OFFSET)
 endif
+ifneq ($(TW_OVERRIDE_SYSTEM_PROPS),)
+    TW_INCLUDE_LIBRESETPROP := true
+    LOCAL_CFLAGS += -DTW_OVERRIDE_SYSTEM_PROPS=$(TW_OVERRIDE_SYSTEM_PROPS)
+endif
+ifneq ($(TW_INCLUDE_LIBRESETPROP),)
+    ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 24; echo $$?),0)
+        $(warning libresetprop is not available for android < 7)
+    else
+        LOCAL_SHARED_LIBRARIES += libresetprop
+        LOCAL_C_INCLUDES += external/magisk-prebuilt/include
+        LOCAL_CFLAGS += -DTW_INCLUDE_LIBRESETPROP
+    endif
+endif
+
 TWRP_REQUIRED_MODULES += \
     relink \
     relink_init \
